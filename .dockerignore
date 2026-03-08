@@ -1,0 +1,9 @@
+node_modules
+apps/*/node_modules
+apps/*/dist
+apps/api-server/prisma/dev.db*
+apps/api-server/uploads/*
+.git
+.claude
+.DS_Store
+*.tsbuildinfo

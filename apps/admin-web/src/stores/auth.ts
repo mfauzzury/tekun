@@ -1,7 +1,13 @@
 import { defineStore } from "pinia";
 
-import { getMe, login, logout, updateProfile as apiUpdateProfile, changePassword as apiChangePassword, uploadAvatar as apiUploadAvatar, removeAvatar as apiRemoveAvatar } from "@/api/auth";
 import type { User } from "@/types";
+
+const mockUser: User = {
+  id: 1,
+  email: "admin@example.com",
+  name: "Administrator",
+  role: "admin",
+};
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -16,41 +22,26 @@ export const useAuthStore = defineStore("auth", {
     async initialize() {
       if (this.initialized) return;
       this.initialized = true;
-      try {
-        const response = await getMe();
-        this.user = response.data.user;
-      } catch {
-        this.user = null;
-      }
+      this.user = mockUser;
     },
-    async signIn(email: string, password: string) {
+    async signIn(_email: string, _password: string) {
       this.loading = true;
       try {
-        await login(email, password);
-        const me = await getMe();
-        this.user = me.data.user;
+        this.user = mockUser;
       } finally {
         this.loading = false;
       }
     },
     async signOut() {
-      await logout();
       this.user = null;
     },
     async updateProfile(data: { name?: string; email?: string }) {
-      const response = await apiUpdateProfile(data);
-      this.user = response.data.user;
+      if (this.user) {
+        this.user = { ...this.user, ...data };
+      }
     },
-    async changePassword(data: { currentPassword: string; newPassword: string }) {
-      await apiChangePassword(data);
-    },
-    async uploadAvatar(file: File) {
-      const response = await apiUploadAvatar(file);
-      this.user = response.data.user;
-    },
-    async removeAvatar() {
-      const response = await apiRemoveAvatar();
-      this.user = response.data.user;
-    },
+    async changePassword(_data: { currentPassword: string; newPassword: string }) {},
+    async uploadAvatar(_file: File) {},
+    async removeAvatar() {},
   },
 });
