@@ -42,11 +42,11 @@ async function submit() {
     <div class="w-full max-w-[400px]">
       <!-- Logo -->
       <div class="mb-7 flex justify-center">
-        <div v-if="site.siteIconUrl" class="flex h-8 items-center justify-center overflow-hidden">
+        <div v-if="site.siteIconUrl" class="flex h-14 items-center justify-center overflow-hidden">
           <img :src="resolveUrl(site.siteIconUrl)" alt="Site logo" class="h-full w-auto object-contain" />
         </div>
-        <div v-else class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600">
-          <Shield class="h-4 w-4 text-white" />
+        <div v-else class="flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600">
+          <Shield class="h-7 w-7 text-white" />
         </div>
       </div>
 

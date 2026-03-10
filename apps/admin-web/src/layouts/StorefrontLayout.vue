@@ -52,6 +52,10 @@ const menuTree = computed(() => {
             <p v-if="site?.webfrontTagline || site?.tagline" class="text-sm text-slate-500">{{ site?.webfrontTagline || site?.tagline }}</p>
           </div>
         </div>
+        <div class="flex items-center gap-2">
+          <router-link to="/portal" class="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900">Portal Pemohon</router-link>
+          <router-link to="/admin/login" class="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900">Admin</router-link>
+        </div>
       </div>
       <div v-if="menuTree.roots.length" class="border-t border-slate-100 bg-white">
         <nav class="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-1 px-4 py-2">
@@ -107,7 +111,10 @@ const menuTree = computed(() => {
 
     <main class="mx-auto w-full max-w-4xl px-4 py-8">
       <div v-if="loading" class="rounded-lg border border-slate-200 bg-white p-6 text-slate-500">Loading page...</div>
-      <div v-else-if="error" class="rounded-lg border border-rose-200 bg-rose-50 p-6 text-rose-700">{{ error }}</div>
+      <div v-else-if="error" class="rounded-lg border border-slate-200 bg-white p-6">
+        <p class="text-slate-700">{{ error }}</p>
+        <router-link v-if="error.includes('No published page')" to="/admin/login" class="mt-4 inline-block rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700">Go to Admin Login</router-link>
+      </div>
       <article v-else-if="page" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <img
           v-if="page.featuredImage?.url"

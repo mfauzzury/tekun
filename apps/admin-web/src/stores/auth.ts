@@ -1,13 +1,7 @@
 import { defineStore } from "pinia";
 
+import * as authApi from "@/api/auth";
 import type { User } from "@/types";
-
-const mockUser: User = {
-  id: 1,
-  email: "admin@example.com",
-  name: "Administrator",
-  role: "admin",
-};
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -22,26 +16,48 @@ export const useAuthStore = defineStore("auth", {
     async initialize() {
       if (this.initialized) return;
       this.initialized = true;
-      this.user = mockUser;
+      try {
+        const res = await authApi.getMe();
+        this.user = res.data.user;
+      } catch {
+        this.user = null;
+      }
     },
-    async signIn(_email: string, _password: string) {
+    async signIn(email: string, password: string) {
       this.loading = true;
       try {
-        this.user = mockUser;
+        await authApi.login(email, password);
+        const res = await authApi.getMe();
+        this.user = res.data.user;
+      } catch (e) {
+        this.user = null;
+        throw e;
       } finally {
         this.loading = false;
       }
     },
     async signOut() {
+      try {
+        await authApi.logout();
+      } catch {
+        /* ignore */
+      }
       this.user = null;
     },
     async updateProfile(data: { name?: string; email?: string }) {
-      if (this.user) {
-        this.user = { ...this.user, ...data };
-      }
+      const res = await authApi.updateProfile(data);
+      this.user = res.data.user;
     },
-    async changePassword(_data: { currentPassword: string; newPassword: string }) {},
-    async uploadAvatar(_file: File) {},
-    async removeAvatar() {},
+    async changePassword(data: { currentPassword: string; newPassword: string }) {
+      await authApi.changePassword(data);
+    },
+    async uploadAvatar(file: File) {
+      const res = await authApi.uploadAvatar(file);
+      this.user = res.data.user;
+    },
+    async removeAvatar() {
+      const res = await authApi.removeAvatar();
+      this.user = res.data.user;
+    },
   },
 });
