@@ -9,6 +9,7 @@
     "dev:api": "npm run dev -w apps/api-server",
     "dev:admin": "npm run dev -w apps/admin-web",
     "dev:cms": "concurrently \"npm run dev:api\" \"npm run dev:admin\"",
+    "dev:mobile": "npm run start -w apps/mobile",
     "clean": "node scripts/clean.mjs",
     "clean:all": "node scripts/clean.mjs --all",
     "setup:cms": "npm install && node scripts/setup-cms.mjs && npm run db:generate && npm run db:push && npm run db:seed",
