@@ -14,3 +14,8 @@ apps/api-server/uploads/*
 
 apps/*/dist
 *.tsbuildinfo
+
+# Mobile (Expo/React Native)
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/

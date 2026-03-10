@@ -2,6 +2,7 @@
 
 This repository contains a CMS stack:
 - `apps/api-server`: Express + Prisma + SQLite API
+- `apps/mobile`: React Native (Expo) mobile app — mockup UI
 - `apps/admin-web`: Vue 3 + Vite app with two surfaces:
   - Storefront: `/`
   - Admin: `/admin/*`
@@ -40,6 +41,7 @@ npm run clean:all    # full reset including .env, SQLite DB, uploads
 npm run setup:cms    # one-command CMS bootstrap
 npm run dev:cms      # run api + admin-web
 npm run build:cms    # build api + admin-web
+npm run dev:mobile   # run mobile app (Expo)
 ```
 
 ## API Highlights
