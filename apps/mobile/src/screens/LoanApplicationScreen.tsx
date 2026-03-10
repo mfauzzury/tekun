@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import FadeInView from '../components/FadeInView';
@@ -21,24 +21,87 @@ const purposes = [
   'Lain-lain',
 ];
 
+const businessTypes = [
+  'Peruncitan',
+  'Makanan & Minuman (F&B)',
+  'Perkhidmatan',
+  'Pembuatan',
+  'Pertanian',
+  'Teknologi & Digital',
+  'Pengangkutan & Logistik',
+  'Lain-lain',
+];
+
+const registrationStatuses = [
+  { id: 'ssm', label: 'Berdaftar dengan SSM' },
+  { id: 'pbt', label: 'Berdaftar dengan PBT' },
+  { id: 'both', label: 'Berdaftar SSM & PBT' },
+  { id: 'none', label: 'Belum Berdaftar' },
+];
+
+const requiredDocs = [
+  { id: 'ic', label: 'Salinan Kad Pengenalan', icon: 'id-card-outline' as const },
+  { id: 'license', label: 'Lesen Perniagaan / SSM', icon: 'document-text-outline' as const },
+  { id: 'bank', label: 'Penyata Bank (3 Bulan)', icon: 'receipt-outline' as const },
+  { id: 'photo', label: 'Gambar Premis Perniagaan', icon: 'camera-outline' as const },
+  { id: 'other', label: 'Dokumen Sokongan Lain', icon: 'attach-outline' as const },
+];
+
+const stepLabels = ['Pilih Skim', 'Maklumat Pembiayaan', 'Maklumat Perniagaan', 'Muat Naik Dokumen'];
+
 export default function LoanApplicationScreen({ navigation }: any) {
   const [activeScheme, setActiveScheme] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [activeDuration, setActiveDuration] = useState<number | null>(null);
   const [activePurpose, setActivePurpose] = useState<number | null>(null);
   const [businessName, setBusinessName] = useState('');
-  const [businessType, setBusinessType] = useState('');
+  const [businessType, setBusinessType] = useState<string | null>(null);
+  const [registrationStatus, setRegistrationStatus] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeDeclaration, setAgreeDeclaration] = useState(false);
+  const [uploadedDocs, setUploadedDocs] = useState<Record<string, boolean>>({});
   const [step, setStep] = useState(0);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const canProceed = step === 0
     ? activeScheme !== null
     : step === 1
       ? amount.length > 0 && activeDuration !== null && activePurpose !== null
-      : businessName.length > 0 && businessType.length > 0;
+      : step === 2
+        ? businessName.length > 0 && businessType !== null && registrationStatus !== null && agreeTerms && agreePrivacy && agreeDeclaration
+        : Object.keys(uploadedDocs).length >= 3;
+
+  const formatAmount = (text: string) => {
+    // Remove everything except digits and dot
+    let clean = text.replace(/[^0-9.]/g, '');
+    // Only allow one dot
+    const parts = clean.split('.');
+    if (parts.length > 2) clean = parts[0] + '.' + parts.slice(1).join('');
+    // Limit decimal to 2 digits
+    if (parts.length === 2 && parts[1].length > 2) {
+      clean = parts[0] + '.' + parts[1].slice(0, 2);
+    }
+    // Add commas to integer part
+    const [intPart, decPart] = clean.split('.');
+    const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    setAmount(decPart !== undefined ? `${withCommas}.${decPart}` : withCommas);
+  };
+
+  const getRawAmount = () => parseFloat(amount.replace(/,/g, '')) || 0;
 
   const handleSubmit = () => {
     navigation.goBack();
+  };
+
+  const toggleDoc = (docId: string) => {
+    setUploadedDocs(prev => {
+      const next = { ...prev };
+      if (next[docId]) delete next[docId];
+      else next[docId] = true;
+      return next;
+    });
   };
 
   return (
@@ -57,12 +120,21 @@ export default function LoanApplicationScreen({ navigation }: any) {
 
       {/* Progress */}
       <View style={styles.progressRow}>
-        {[0, 1, 2].map(i => (
-          <View key={i} style={[styles.progressBar, i <= step && styles.progressBarActive]} />
-        ))}
+        {[0, 1, 2, 3].map(i => {
+          const stepColors = ['#007AFF', '#FF9500', '#34C759', Colors.primary];
+          return (
+            <View
+              key={i}
+              style={[
+                styles.progressBar,
+                i <= step && { backgroundColor: stepColors[i] },
+              ]}
+            />
+          );
+        })}
       </View>
       <Text style={styles.stepLabel}>
-        {step === 0 ? 'Pilih Skim' : step === 1 ? 'Maklumat Pembiayaan' : 'Maklumat Perniagaan'}
+        Langkah {step + 1}/4 — {stepLabels[step]}
       </Text>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -102,7 +174,7 @@ export default function LoanApplicationScreen({ navigation }: any) {
               <TextInput
                 style={styles.amountInput}
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={formatAmount}
                 placeholder="0.00"
                 placeholderTextColor={Colors.textLight}
                 keyboardType="numeric"
@@ -143,7 +215,7 @@ export default function LoanApplicationScreen({ navigation }: any) {
                 <View style={styles.estimateInfo}>
                   <Text style={styles.estimateLabel}>Anggaran Ansuran Bulanan</Text>
                   <Text style={styles.estimateValue}>
-                    RM {(parseFloat(amount.replace(/,/g, '')) / parseInt(durations[activeDuration]) || 0).toFixed(2)}
+                    RM {(getRawAmount() / parseInt(durations[activeDuration]) || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
               </View>
@@ -163,14 +235,65 @@ export default function LoanApplicationScreen({ navigation }: any) {
               placeholderTextColor={Colors.textLight}
             />
 
+            {/* Dropdown: Jenis Perniagaan */}
             <Text style={styles.sectionTitle}>Jenis Perniagaan</Text>
-            <TextInput
-              style={styles.textInput}
-              value={businessType}
-              onChangeText={setBusinessType}
-              placeholder="cth. Peruncitan, F&B, Perkhidmatan"
-              placeholderTextColor={Colors.textLight}
-            />
+            <AnimatedPressable
+              style={styles.dropdownBtn}
+              scaleTo={0.98}
+              onPress={() => setDropdownOpen(true)}
+            >
+              <Text style={[styles.dropdownBtnText, !businessType && { color: Colors.textLight }]}>
+                {businessType || 'Pilih jenis perniagaan'}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color={Colors.textSecondary} />
+            </AnimatedPressable>
+
+            {/* Dropdown Modal */}
+            <Modal visible={dropdownOpen} transparent animationType="fade">
+              <AnimatedPressable style={styles.modalOverlay} onPress={() => setDropdownOpen(false)}>
+                <View style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Jenis Perniagaan</Text>
+                    <AnimatedPressable scaleTo={0.9} onPress={() => setDropdownOpen(false)}>
+                      <Ionicons name="close" size={22} color={Colors.text} />
+                    </AnimatedPressable>
+                  </View>
+                  <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                    {businessTypes.map(bt => (
+                      <AnimatedPressable
+                        key={bt}
+                        style={[styles.modalOption, businessType === bt && styles.modalOptionActive]}
+                        scaleTo={0.98}
+                        onPress={() => { setBusinessType(bt); setDropdownOpen(false); }}
+                      >
+                        <Text style={[styles.modalOptionText, businessType === bt && styles.modalOptionTextActive]}>
+                          {bt}
+                        </Text>
+                        {businessType === bt && (
+                          <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
+                        )}
+                      </AnimatedPressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              </AnimatedPressable>
+            </Modal>
+
+            {/* Radio: Status Pendaftaran */}
+            <Text style={styles.sectionTitle}>Status Pendaftaran Perniagaan</Text>
+            {registrationStatuses.map(rs => (
+              <AnimatedPressable
+                key={rs.id}
+                style={styles.radioRow}
+                scaleTo={0.98}
+                onPress={() => setRegistrationStatus(rs.id)}
+              >
+                <View style={[styles.radioOuter, registrationStatus === rs.id && styles.radioOuterActive]}>
+                  {registrationStatus === rs.id && <View style={styles.radioInner} />}
+                </View>
+                <Text style={styles.radioLabel}>{rs.label}</Text>
+              </AnimatedPressable>
+            ))}
 
             <Text style={styles.sectionTitle}>Catatan Tambahan (Pilihan)</Text>
             <TextInput
@@ -183,6 +306,68 @@ export default function LoanApplicationScreen({ navigation }: any) {
               numberOfLines={4}
               textAlignVertical="top"
             />
+
+            {/* Checkboxes: Terms */}
+            <Text style={styles.sectionTitle}>Perakuan & Persetujuan</Text>
+            <AnimatedPressable style={styles.checkboxRow} scaleTo={0.98} onPress={() => setAgreeTerms(!agreeTerms)}>
+              <View style={[styles.checkboxOuter, agreeTerms && styles.checkboxOuterActive]}>
+                {agreeTerms && <Ionicons name="checkmark" size={14} color={Colors.white} />}
+              </View>
+              <Text style={styles.checkboxLabel}>Saya bersetuju dengan <Text style={styles.linkText}>Terma & Syarat</Text> pembiayaan TEKUN.</Text>
+            </AnimatedPressable>
+
+            <AnimatedPressable style={styles.checkboxRow} scaleTo={0.98} onPress={() => setAgreePrivacy(!agreePrivacy)}>
+              <View style={[styles.checkboxOuter, agreePrivacy && styles.checkboxOuterActive]}>
+                {agreePrivacy && <Ionicons name="checkmark" size={14} color={Colors.white} />}
+              </View>
+              <Text style={styles.checkboxLabel}>Saya bersetuju dengan <Text style={styles.linkText}>Dasar Privasi</Text> dan pemprosesan data peribadi.</Text>
+            </AnimatedPressable>
+
+            <AnimatedPressable style={styles.checkboxRow} scaleTo={0.98} onPress={() => setAgreeDeclaration(!agreeDeclaration)}>
+              <View style={[styles.checkboxOuter, agreeDeclaration && styles.checkboxOuterActive]}>
+                {agreeDeclaration && <Ionicons name="checkmark" size={14} color={Colors.white} />}
+              </View>
+              <Text style={styles.checkboxLabel}>Saya mengaku bahawa semua maklumat yang diberikan adalah benar dan tepat.</Text>
+            </AnimatedPressable>
+          </FadeInView>
+        )}
+
+        {/* Step 3: Document Upload */}
+        {step === 3 && (
+          <FadeInView delay={100} duration={400} direction="up" distance={15}>
+            <Text style={styles.sectionTitle}>Muat Naik Dokumen</Text>
+            <Text style={styles.sectionSubtitle}>Sila muat naik sekurang-kurangnya 3 dokumen yang diperlukan.</Text>
+
+            {requiredDocs.map(doc => (
+              <AnimatedPressable
+                key={doc.id}
+                style={[styles.fileCard, uploadedDocs[doc.id] && styles.fileCardUploaded]}
+                scaleTo={0.98}
+                onPress={() => toggleDoc(doc.id)}
+              >
+                <View style={[styles.fileIconWrap, uploadedDocs[doc.id] && styles.fileIconWrapUploaded]}>
+                  <Ionicons name={doc.icon} size={20} color={uploadedDocs[doc.id] ? Colors.accent : Colors.textSecondary} />
+                </View>
+                <View style={styles.fileInfo}>
+                  <Text style={styles.fileLabel}>{doc.label}</Text>
+                  <Text style={[styles.fileStatus, uploadedDocs[doc.id] && styles.fileStatusUploaded]}>
+                    {uploadedDocs[doc.id] ? 'Berjaya dimuat naik' : 'Belum dimuat naik'}
+                  </Text>
+                </View>
+                <View style={[styles.fileAction, uploadedDocs[doc.id] && styles.fileActionUploaded]}>
+                  <Ionicons
+                    name={uploadedDocs[doc.id] ? 'checkmark' : 'cloud-upload-outline'}
+                    size={18}
+                    color={uploadedDocs[doc.id] ? Colors.white : Colors.primary}
+                  />
+                </View>
+              </AnimatedPressable>
+            ))}
+
+            <View style={styles.fileHint}>
+              <Ionicons name="information-circle-outline" size={16} color={Colors.textSecondary} />
+              <Text style={styles.fileHintText}>Format diterima: PDF, JPG, PNG. Saiz maksimum: 5MB setiap fail.</Text>
+            </View>
 
             {/* Summary */}
             <View style={styles.summaryCard}>
@@ -203,6 +388,18 @@ export default function LoanApplicationScreen({ navigation }: any) {
                 <Text style={styles.summaryLabel}>Tujuan</Text>
                 <Text style={styles.summaryValue}>{activePurpose !== null ? purposes[activePurpose] : '-'}</Text>
               </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Perniagaan</Text>
+                <Text style={styles.summaryValue}>{businessName}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Jenis</Text>
+                <Text style={styles.summaryValue}>{businessType || '-'}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Dokumen</Text>
+                <Text style={styles.summaryValue}>{Object.keys(uploadedDocs).length}/{requiredDocs.length} dimuat naik</Text>
+              </View>
             </View>
           </FadeInView>
         )}
@@ -216,12 +413,12 @@ export default function LoanApplicationScreen({ navigation }: any) {
           scaleTo={0.97}
           onPress={() => {
             if (!canProceed) return;
-            if (step < 2) setStep(step + 1);
+            if (step < 3) setStep(step + 1);
             else handleSubmit();
           }}
         >
-          <Text style={styles.nextBtnText}>{step === 2 ? 'Hantar Permohonan' : 'Seterusnya'}</Text>
-          <Ionicons name={step === 2 ? 'checkmark' : 'arrow-forward'} size={18} color={Colors.white} />
+          <Text style={styles.nextBtnText}>{step === 3 ? 'Hantar Permohonan' : 'Seterusnya'}</Text>
+          <Ionicons name={step === 3 ? 'checkmark' : 'arrow-forward'} size={18} color={Colors.white} />
         </AnimatedPressable>
       </View>
     </KeyboardAvoidingView>
@@ -288,6 +485,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 8,
   },
+  sectionSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: Colors.textSecondary,
+    marginBottom: 14,
+    marginTop: -4,
+    lineHeight: 17,
+  },
 
   // Scheme cards
   schemeCard: {
@@ -325,12 +530,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
   },
+
+  // Radio
   radioOuter: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: '#D1D5DB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -343,6 +550,201 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: Colors.primary,
   },
+  radioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 8,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  radioLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text,
+    flex: 1,
+  },
+
+  // Checkbox
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    gap: 12,
+  },
+  checkboxOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxOuterActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  checkboxLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.text,
+    flex: 1,
+    lineHeight: 19,
+  },
+  linkText: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+
+  // Dropdown
+  dropdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.background,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  dropdownBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text,
+  },
+
+  // Modal (Dropdown)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '60%',
+    paddingBottom: 30,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  modalScroll: {
+    paddingHorizontal: 20,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalOptionActive: {
+    backgroundColor: Colors.primary + '08',
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+  },
+  modalOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text,
+  },
+  modalOptionTextActive: {
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+
+  // File attachment
+  fileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderStyle: 'dashed',
+  },
+  fileCardUploaded: {
+    borderColor: Colors.accent + '40',
+    backgroundColor: Colors.pastelMint,
+    borderStyle: 'solid',
+  },
+  fileIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  fileIconWrapUploaded: {
+    backgroundColor: Colors.accent + '15',
+  },
+  fileInfo: {
+    flex: 1,
+  },
+  fileLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  fileStatus: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: Colors.textLight,
+  },
+  fileStatusUploaded: {
+    color: Colors.accent,
+  },
+  fileAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary + '10',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fileActionUploaded: {
+    backgroundColor: Colors.accent,
+  },
+  fileHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  fileHintText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: Colors.textSecondary,
+    flex: 1,
+    lineHeight: 16,
+  },
 
   // Amount input
   amountInputWrap: {
@@ -353,6 +755,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 4,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
   },
   amountPrefix: {
     fontSize: 18,
@@ -428,6 +832,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.text,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
   },
   textArea: {
     minHeight: 100,
@@ -463,6 +869,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: Colors.text,
+    maxWidth: '55%',
+    textAlign: 'right',
   },
 
   // Bottom
