@@ -2,7 +2,6 @@ import type { Component } from "vue";
 import {
   Calendar,
   FilePlus,
-  Home,
   ListChecks,
   MessageCircle,
   User,
@@ -24,7 +23,6 @@ export type PortalMenuItemDef = {
  * Rujukan: docs/Spec Modul Pendaftaran dan Permohonan.csv
  */
 export const PORTAL_MENU: PortalMenuItemDef[] = [
-  { id: "laman-utama", label: "Laman Utama", to: "/portal", icon: Home },
   { id: "permohonan-baru", label: "Permohonan Baru", to: "/portal/permohonan/baru", icon: FilePlus },
   { id: "permohonan-saya", label: "Permohonan Saya", to: "/portal/permohonan", icon: ListChecks },
   { id: "profil-usahawan", label: "Profil Usahawan", to: "/portal/profil", icon: User },

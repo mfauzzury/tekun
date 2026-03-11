@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { Calendar, Video, MapPin, ChevronRight } from "lucide-vue-next";
+import { Calendar, ChevronRight, MapPin, Video } from "lucide-vue-next";
 import PortalLayout from "@/layouts/PortalLayout.vue";
 import PortalFilterBar from "@/components/portal/PortalFilterBar.vue";
+import PortalPageHeader from "@/components/portal/PortalPageHeader.vue";
 import { TEMUDUGA_DUMMY } from "@/data/portal-dummy";
 
 const q = ref("");
@@ -21,7 +22,7 @@ const filteredItems = computed(() => {
     list = list.filter(
       (t) =>
         t.permohonanId.toLowerCase().includes(lower) ||
-        t.lokasi.toLowerCase().includes(lower)
+        t.lokasi.toLowerCase().includes(lower),
     );
   }
   if (status.value) {
@@ -36,91 +37,87 @@ const filteredItems = computed(() => {
 });
 
 function statusClass(s: string) {
-  if (s === "Dijadualkan") return "bg-emerald-100 text-emerald-700";
-  if (s === "Menunggu Pengesahan") return "bg-amber-100 text-amber-700";
-  if (s === "Selesai") return "bg-slate-100 text-slate-600";
-  return "bg-slate-100 text-slate-600";
+  if (s === "Dijadualkan") return "bg-emerald-50 text-emerald-700";
+  if (s === "Menunggu Pengesahan") return "bg-amber-50 text-amber-700";
+  if (s === "Selesai") return "bg-slate-50 text-slate-600";
+  return "bg-slate-50 text-slate-600";
+}
+
+function statusDot(s: string) {
+  if (s === "Dijadualkan") return "bg-emerald-500";
+  if (s === "Menunggu Pengesahan") return "bg-amber-500";
+  return "bg-slate-400";
 }
 </script>
 
 <template>
   <PortalLayout>
     <div class="space-y-6">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 class="text-2xl font-bold text-slate-900">Temuduga</h1>
-          <p class="mt-1 text-slate-600">Jadual dan urus temuduga permohonan anda</p>
-        </div>
-        <button
-          class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700"
-        >
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between portal-reveal">
+        <PortalPageHeader
+          title="Temuduga"
+          subtitle="Pilih slot, semak jadual, dan urus temuduga permohonan anda"
+        />
+        <button class="portal-btn-primary">
           <Calendar class="h-4 w-4" />
           Pilih Slot Temuduga
         </button>
       </div>
 
-      <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-4 py-4">
-          <h2 class="text-sm font-semibold text-slate-900">Senarai Temuduga</h2>
+      <section class="portal-surface overflow-hidden portal-reveal">
+        <div class="flex flex-wrap items-center justify-between gap-4 px-5 py-4" style="border-bottom: 1px solid #F0F0F0">
+          <h2 class="text-sm font-semibold tracking-wide" style="color: #111827">Senarai Temuduga</h2>
           <PortalFilterBar
             v-model:q="q"
             v-model:status="status"
-            search-placeholder="Cari no. permohonan..."
+            search-placeholder="Cari no. permohonan atau lokasi..."
             :filter-options="filterOptions"
-            filter-label="Status"
+            filter-label="Semua Status"
             @filter="() => {}"
           />
         </div>
 
-        <div class="divide-y divide-slate-100">
-          <div
+        <div class="divide-y" style="border-color: #F0F0F0">
+          <article
             v-for="item in filteredItems"
             :key="item.id"
-            class="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+            class="flex flex-col gap-4 px-5 py-4 transition hover:bg-[#FAFBFC] md:flex-row md:items-center md:justify-between"
           >
-            <div class="flex flex-1 items-start gap-4">
+            <div class="flex items-start gap-4">
               <div
-                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-                :class="item.jenis === 'Maya' ? 'bg-blue-100' : 'bg-emerald-100'"
+                class="flex shrink-0 items-center justify-center"
+                :style="item.jenis === 'Maya' ? 'width:44px;height:44px;border-radius:14px;border:1.5px solid #007AFF40;color:#007AFF' : 'width:44px;height:44px;border-radius:14px;border:1.5px solid #0A84FF40;color:#0A84FF'"
               >
-                <Video v-if="item.jenis === 'Maya'" class="h-6 w-6 text-blue-600" />
-                <MapPin v-else class="h-6 w-6 text-emerald-600" />
+                <Video v-if="item.jenis === 'Maya'" class="h-5 w-5" />
+                <MapPin v-else class="h-5 w-5" />
               </div>
               <div>
                 <p class="font-mono text-sm font-semibold text-slate-900">{{ item.permohonanId }}</p>
-                <p class="mt-1 flex items-center gap-2 text-sm text-slate-600">
-                  <Calendar class="h-4 w-4" />
-                  {{ item.tarikh }} · {{ item.masa }}
-                </p>
+                <p class="mt-1 text-sm text-slate-700">{{ item.tarikh }} · {{ item.masa }}</p>
                 <p class="mt-1 text-sm text-slate-500">{{ item.lokasi }}</p>
-                <span class="mt-2 inline-block text-xs text-slate-400">{{ item.jenis }}</span>
+                <p class="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ item.jenis }}</p>
               </div>
             </div>
-            <div class="flex items-center gap-3">
-              <span
-                class="rounded-full px-2.5 py-1 text-xs font-medium"
-                :class="statusClass(item.status)"
-              >
+            <div class="flex items-center gap-2">
+              <span class="portal-status-pill" :class="statusClass(item.status)">
+                <span class="h-1.5 w-1.5 rounded-full" :class="statusDot(item.status)" />
                 {{ item.status }}
               </span>
               <button
                 v-if="item.status !== 'Selesai'"
-                class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                class="portal-btn-secondary !px-3 !py-2"
               >
                 Tukar Tarikh
                 <ChevronRight class="h-4 w-4" />
               </button>
             </div>
-          </div>
+          </article>
 
-          <div
-            v-if="filteredItems.length === 0"
-            class="px-4 py-12 text-center text-sm text-slate-500"
-          >
-            Tiada temuduga dijumpai.
+          <div v-if="filteredItems.length === 0" class="p-5">
+            <div class="portal-empty">Tiada temuduga dijumpai.</div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   </PortalLayout>
 </template>
